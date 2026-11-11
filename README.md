@@ -75,34 +75,40 @@ app/
 
 ## Panduan Instalasi & Menjalankan Proyek
 
-1. **Instal dependensi & siapkan environment:**
+1. **Setup satu perintah (otomatis install Composer, `.env`, key, migrasi SQLite, & build NPM):**
+   ```bash
+   composer run setup
+   php artisan db:seed
+   ```
+   *(Atau jalankan manual langkah 1–3 di bawah ini)*
+
+2. **Instalasi manual (opsional jika tidak memakai `composer run setup`):**
    ```bash
    composer install
    cp .env.example .env
    php artisan key:generate
-   ```
-2. **Jalankan migrasi database & seeder data awal:**
-   ```bash
+   touch database/database.sqlite
    php artisan migrate:fresh --seed
-   ```
-3. **Build aset frontend (Tailwind CSS v4 + Vite):**
-   ```bash
    npm install
    npm run build
    ```
-4. **Jalankan server pengembangan:**
-   ```bash
-   php artisan serve
-   ```
-5. **Menjalankan MQTT Listener / Simulator (Opsional):**
-   ```bash
-   # Simulasi pengiriman data sensor dari ESP32:
-   php artisan mqtt:simulate --humidity=58.5 --temperature=31.2 --distance=8.0
 
-   # Menjalankan worker subscriber MQTT (pastikan MQTT_ENABLED=true di .env):
-   php artisan mqtt:listen
-   ```
-6. **Menjalankan Pengujian BDD (Behavior-Driven Development):**
-   ```bash
-   php artisan test
-   ```
+---
+
+## Quick Commands to Run & Test
+
+Salin dan jalankan perintah berikut di terminal untuk menjalankan website, menyimulasikan sensor ESP32 via MQTT, dan menjalankan pengujian BDD:
+
+```bash
+# Start the local web server (http://127.0.0.1:8000)
+php artisan serve
+
+# Simulate an ESP32 sending MQTT telemetry from CLI
+php artisan mqtt:simulate --humidity=58.0 --temperature=31.2 --distance=8.0
+
+# Start the background MQTT topic subscriber (when connecting real ESP32 hardware)
+php artisan mqtt:listen
+
+# Run the BDD feature test suite
+php artisan test
+```
