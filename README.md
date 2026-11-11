@@ -1,63 +1,63 @@
 # Helmet Care — Dehumidifier Station (Web & IoT Platform)
 
-Platform web monitoring dan kontrol berbasis **Laravel 13.x (Blade MVC)** untuk sistem embedded IoT **Helmet Care Dehumidifier Station** berbasis mikrokontroler **ESP32**, sensor kelembapan & suhu **DHT22**, sensor jarak ultrasonik **HC-SR04**, modul **Relay Kipas**, dan indikator **LED**.
+A **Laravel 13.x (Blade MVC)** monitoring and control web platform for the **Helmet Care Dehumidifier Station** embedded IoT system powered by an **ESP32** microcontroller, **DHT22** temperature & humidity sensor, **HC-SR04** ultrasonic distance sensor, **Relay Fan** module, and **Status LED** indicator.
 
 ---
 
-## Fitur Utama
+## Key Features
 
 1. **Dashboard Station (`/`)**
-   - Pemantauan metrik sensor real-time: **Kelembapan Saat Ini (% RH)**, **Suhu Dalam Helm (°C)**, **Deteksi Helm (cm)**, serta status **Kipas & LED**.
-   - **Grafik Kelembapan Real-Time** dengan garis batas histeresis (`Batas nyala 65%` & `Batas kering 55%`) dan pembaruan otomatis (*live polling* setiap 2 detik).
-   - Panel **Siklus Pengeringan** aktif beserta tombol override **Matikan / Nyalakan Kipas Manual** via MQTT.
-   - Tabel ringkasan **Log Pengeringan Harian**.
-2. **Riwayat Pengeringan (`/riwayat`)**
-   - Filter berdasarkan rentang tanggal (`7 hari terakhir`, `30 hari terakhir`, `Semua waktu`) dan status siklus (`Semua`, `Berjalan`, `Selesai`).
-   - 3 kartu ringkasan KPI: **Total Siklus**, **Rata-rata Durasi (menit)**, dan **Rata-rata Penurunan RH (poin)**.
-   - Grafik batang **Durasi Pengeringan per Hari** (hijau untuk siklus selesai, oranye untuk siklus berjalan).
-   - Fitur **Ekspor CSV** (`/riwayat/export`) dan tabel riwayat berhalaman (*pagination*).
-3. **Perangkat (`/perangkat`)**
-   - Status koneksi **ESP32 Station 01** dan diagnostik keempat komponen hardware (`HC-SR04`, `DHT22`, `Modul Relay`, `Lampu LED`).
-   - Informasi jaringan Wi-Fi (`SSID`, `RSSI dBm`, `Endpoint Server`, `Topic MQTT`, `Versi Firmware`) dan log **Aktivitas Perangkat**.
-   - Panel interaktif **Simulator Telemetry MQTT** untuk menguji respons website sebelum perangkat fisik ESP32 terhubung.
-4. **Pengaturan Ambang (`/pengaturan`)**
-   - Konfigurasi nilai ambang histeresis sensor (`Kipas menyala di atas % RH`, `Kipas mati di bawah % RH`, `Jarak deteksi helm cm`, `Interval kirim data detik`).
-   - Pengaturan **Mode Operasi** (`Otomatis` & notifikasi selesai kering) serta tombol **Kembalikan Default** yang langsung menyinkronkan konfigurasi ke ESP32 melalui MQTT.
+   - Real-time sensor KPI cards: **Current Humidity (% RH)**, **Internal Helmet Temperature (°C)**, **Helmet Proximity Detection (cm)**, and **Fan & LED Status**.
+   - **Real-Time Humidity Line Chart** with hysteresis threshold reference lines (`65% ON` & `55% OFF`) and automatic live polling every 2 seconds.
+   - **Active Drying Cycle** progress card with a **Manual Fan Override** button via MQTT.
+   - **Daily Drying Log** summary table.
+2. **Drying History (`/riwayat`)**
+   - Filter by date range (`Last 7 days`, `Last 30 days`, `All time`) and cycle status (`All`, `Running`, `Completed`).
+   - 3 KPI summary cards: **Total Cycles (7 days)**, **Average Duration (minutes)**, and **Average RH Reduction (points)**.
+   - **Daily Drying Duration Bar Chart** (teal bars for completed cycles, orange bar for active cycle).
+   - **CSV Export** (`/riwayat/export`) and paginated history table.
+3. **Devices & Diagnostics (`/perangkat`)**
+   - **ESP32 Station 01** connectivity banner and diagnostics for all 4 hardware components (`HC-SR04`, `DHT22`, `Relay Module`, `Status LED`).
+   - Wi-Fi network & MQTT metadata (`SSID`, `RSSI dBm`, `Server Endpoint`, `MQTT Topic`, `Firmware Version`) and chronological **Device Activity Log**.
+   - Interactive **Web MQTT Telemetry Simulator** to test website reactions before physical ESP32 hardware is connected.
+4. **Threshold Settings (`/pengaturan`)**
+   - Configurable hysteresis thresholds (`Fan ON above % RH`, `Fan OFF below % RH`, `Helmet detection distance cm`, `Telemetry interval seconds`).
+   - **Operation Mode** controls (`Automatic mode` & completion notification) and **Restore Defaults** button that syncs configuration to the ESP32 over MQTT.
 
 ---
 
-## Arsitektur MVC & Komunikasi IoT (MQTT + REST Bridge)
+## MVC Architecture & IoT Communication (MQTT + REST Bridge)
 
 ```text
 app/
 ├── Console/Commands/
-│   ├── MqttListenCommand.php        # Daemon subscriber MQTT (`php artisan mqtt:listen`)
-│   └── MqttSimulateCommand.php      # Simulator CLI payload ESP32 (`php artisan mqtt:simulate`)
+│   ├── MqttListenCommand.php          # MQTT subscriber daemon (`php artisan mqtt:listen`)
+│   └── MqttSimulateCommand.php        # CLI ESP32 payload simulator (`php artisan mqtt:simulate`)
 ├── Http/Controllers/
-│   ├── Api/TelemetryController.php  # Endpoint JSON IoT (`/api/iot/telemetry`, `/api/iot/state`, `/api/iot/config`)
-│   ├── DashboardController.php      # Halaman utama Dashboard Station & manual fan toggle
-│   ├── DryingHistoryController.php  # Halaman Riwayat Pengeringan & Ekspor CSV
-│   ├── DeviceController.php         # Halaman status Perangkat & simulator web
-│   └── ThresholdSettingController.php # Halaman Pengaturan Ambang histeresis
+│   ├── Api/TelemetryController.php    # IoT JSON endpoints (`/api/iot/telemetry`, `/api/iot/state`, `/api/iot/config`)
+│   ├── DashboardController.php        # Main Dashboard Station & manual fan toggle
+│   ├── DryingHistoryController.php    # Drying History & CSV export
+│   ├── DeviceController.php           # Device diagnostics & web telemetry simulator
+│   └── ThresholdSettingController.php # Hysteresis threshold settings
 ├── Models/
-│   ├── Station.php                  # Konfigurasi station, snapshot sensor terbaru, & status aktuator
-│   ├── DryingCycle.php              # Siklus pengeringan harian & perhitungan penurunan RH
-│   ├── SensorReading.php            # Data time-series sensor DHT22 & HC-SR04
-│   └── DeviceActivityLog.php        # Log kronologis aktivitas perangkat
+│   ├── Station.php                    # Station config, live sensor snapshot, & actuator states
+│   ├── DryingCycle.php                # Daily drying cycles & RH drop calculations
+│   ├── SensorReading.php              # Time-series readings from DHT22 & HC-SR04
+│   └── DeviceActivityLog.php          # Chronological hardware & automation event logs
 └── Services/
-    ├── MqttBrokerService.php        # Integrasi client MQTT (`php-mqtt/client`)
-    └── TelemetryIngestionService.php # Mesin status histeresis & siklus pengeringan
+    ├── MqttBrokerService.php          # MQTT client integration (`php-mqtt/client`)
+    └── TelemetryIngestionService.php  # Hysteresis state machine & drying cycle lifecycle
 ```
 
-### Kontrak Topik MQTT (`config/mqtt.php`)
+### MQTT Topic Contract (`config/mqtt.php`)
 
-| Arah | Topik MQTT | Deskripsi |
+| Direction | MQTT Topic | Description |
 | :--- | :--- | :--- |
-| **ESP32 &rarr; Server** | `helmet-care/stations/station-01/telemetry` | Mengirim pembacaan sensor DHT22 & HC-SR04 setiap `N` detik |
-| **Server &rarr; ESP32** | `helmet-care/stations/station-01/commands` | Mengirim perintah manual relay kipas (`ON`/`OFF`) & status LED |
-| **Server &rarr; ESP32** | `helmet-care/stations/station-01/config` | Menyinkronkan perubahan ambang batas (% RH, jarak cm, interval) |
+| **ESP32 &rarr; Server** | `helmet-care/stations/station-01/telemetry` | Publishes DHT22 & HC-SR04 sensor readings every `N` seconds |
+| **Server &rarr; ESP32** | `helmet-care/stations/station-01/commands` | Publishes manual fan relay (`ON`/`OFF`) & LED commands |
+| **Server &rarr; ESP32** | `helmet-care/stations/station-01/config` | Syncs updated hysteresis thresholds (% RH, distance cm, interval) |
 
-### Contoh Payload JSON dari ESP32 (MQTT atau HTTP `POST /api/iot/telemetry`)
+### Example JSON Payload from ESP32 (MQTT or HTTP `POST /api/iot/telemetry`)
 
 ```json
 {
@@ -73,16 +73,15 @@ app/
 
 ---
 
-## Panduan Instalasi & Menjalankan Proyek
+## Installation & Setup
 
-1. **Setup satu perintah (otomatis install Composer, `.env`, key, migrasi SQLite, & build NPM):**
+1. **One-command setup (installs Composer packages, creates `.env`, generates app key, runs SQLite migrations, and builds frontend assets):**
    ```bash
    composer run setup
    php artisan db:seed
    ```
-   *(Atau jalankan manual langkah 1–3 di bawah ini)*
 
-2. **Instalasi manual (opsional jika tidak memakai `composer run setup`):**
+2. **Manual installation (alternative to `composer run setup`):**
    ```bash
    composer install
    cp .env.example .env
@@ -97,7 +96,7 @@ app/
 
 ## Quick Commands to Run & Test
 
-Salin dan jalankan perintah berikut di terminal untuk menjalankan website, menyimulasikan sensor ESP32 via MQTT, dan menjalankan pengujian BDD:
+Copy and run the following commands in your terminal to start the web server, simulate ESP32 MQTT telemetry, and run the BDD test suite:
 
 ```bash
 # Start the local web server (http://127.0.0.1:8000)
