@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DryingCycle;
 use App\Services\TelemetryIngestionService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -144,7 +145,7 @@ class DryingHistoryController extends Controller
         $latestCycleDate = DryingCycle::where('station_id', $stationId)->max('started_at');
         if ($latestCycleDate && in_array($range, ['7d', '30d'], true)) {
             $days = $range === '7d' ? 7 : 30;
-            $cutoff = \Carbon\Carbon::parse($latestCycleDate)->subDays($days)->startOfDay();
+            $cutoff = Carbon::parse($latestCycleDate)->subDays($days)->startOfDay();
             $query->where('started_at', '>=', $cutoff);
         }
 

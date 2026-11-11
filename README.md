@@ -1,58 +1,108 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Helmet Care — Dehumidifier Station (Web & IoT Platform)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Platform web monitoring dan kontrol berbasis **Laravel 13.x (Blade MVC)** untuk sistem embedded IoT **Helmet Care Dehumidifier Station** berbasis mikrokontroler **ESP32**, sensor kelembapan & suhu **DHT22**, sensor jarak ultrasonik **HC-SR04**, modul **Relay Kipas**, dan indikator **LED**.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Fitur Utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1. **Dashboard Station (`/`)**
+   - Pemantauan metrik sensor real-time: **Kelembapan Saat Ini (% RH)**, **Suhu Dalam Helm (°C)**, **Deteksi Helm (cm)**, serta status **Kipas & LED**.
+   - **Grafik Kelembapan Real-Time** dengan garis batas histeresis (`Batas nyala 65%` & `Batas kering 55%`) dan pembaruan otomatis (*live polling* setiap 2 detik).
+   - Panel **Siklus Pengeringan** aktif beserta tombol override **Matikan / Nyalakan Kipas Manual** via MQTT.
+   - Tabel ringkasan **Log Pengeringan Harian**.
+2. **Riwayat Pengeringan (`/riwayat`)**
+   - Filter berdasarkan rentang tanggal (`7 hari terakhir`, `30 hari terakhir`, `Semua waktu`) dan status siklus (`Semua`, `Berjalan`, `Selesai`).
+   - 3 kartu ringkasan KPI: **Total Siklus**, **Rata-rata Durasi (menit)**, dan **Rata-rata Penurunan RH (poin)**.
+   - Grafik batang **Durasi Pengeringan per Hari** (hijau untuk siklus selesai, oranye untuk siklus berjalan).
+   - Fitur **Ekspor CSV** (`/riwayat/export`) dan tabel riwayat berhalaman (*pagination*).
+3. **Perangkat (`/perangkat`)**
+   - Status koneksi **ESP32 Station 01** dan diagnostik keempat komponen hardware (`HC-SR04`, `DHT22`, `Modul Relay`, `Lampu LED`).
+   - Informasi jaringan Wi-Fi (`SSID`, `RSSI dBm`, `Endpoint Server`, `Topic MQTT`, `Versi Firmware`) dan log **Aktivitas Perangkat**.
+   - Panel interaktif **Simulator Telemetry MQTT** untuk menguji respons website sebelum perangkat fisik ESP32 terhubung.
+4. **Pengaturan Ambang (`/pengaturan`)**
+   - Konfigurasi nilai ambang histeresis sensor (`Kipas menyala di atas % RH`, `Kipas mati di bawah % RH`, `Jarak deteksi helm cm`, `Interval kirim data detik`).
+   - Pengaturan **Mode Operasi** (`Otomatis` & notifikasi selesai kering) serta tombol **Kembalikan Default** yang langsung menyinkronkan konfigurasi ke ESP32 melalui MQTT.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Arsitektur MVC & Komunikasi IoT (MQTT + REST Bridge)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```text
+app/
+├── Console/Commands/
+│   ├── MqttListenCommand.php        # Daemon subscriber MQTT (`php artisan mqtt:listen`)
+│   └── MqttSimulateCommand.php      # Simulator CLI payload ESP32 (`php artisan mqtt:simulate`)
+├── Http/Controllers/
+│   ├── Api/TelemetryController.php  # Endpoint JSON IoT (`/api/iot/telemetry`, `/api/iot/state`, `/api/iot/config`)
+│   ├── DashboardController.php      # Halaman utama Dashboard Station & manual fan toggle
+│   ├── DryingHistoryController.php  # Halaman Riwayat Pengeringan & Ekspor CSV
+│   ├── DeviceController.php         # Halaman status Perangkat & simulator web
+│   └── ThresholdSettingController.php # Halaman Pengaturan Ambang histeresis
+├── Models/
+│   ├── Station.php                  # Konfigurasi station, snapshot sensor terbaru, & status aktuator
+│   ├── DryingCycle.php              # Siklus pengeringan harian & perhitungan penurunan RH
+│   ├── SensorReading.php            # Data time-series sensor DHT22 & HC-SR04
+│   └── DeviceActivityLog.php        # Log kronologis aktivitas perangkat
+└── Services/
+    ├── MqttBrokerService.php        # Integrasi client MQTT (`php-mqtt/client`)
+    └── TelemetryIngestionService.php # Mesin status histeresis & siklus pengeringan
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Kontrak Topik MQTT (`config/mqtt.php`)
 
-## Contributing
+| Arah | Topik MQTT | Deskripsi |
+| :--- | :--- | :--- |
+| **ESP32 &rarr; Server** | `helmet-care/stations/station-01/telemetry` | Mengirim pembacaan sensor DHT22 & HC-SR04 setiap `N` detik |
+| **Server &rarr; ESP32** | `helmet-care/stations/station-01/commands` | Mengirim perintah manual relay kipas (`ON`/`OFF`) & status LED |
+| **Server &rarr; ESP32** | `helmet-care/stations/station-01/config` | Menyinkronkan perubahan ambang batas (% RH, jarak cm, interval) |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Contoh Payload JSON dari ESP32 (MQTT atau HTTP `POST /api/iot/telemetry`)
 
-## Code of Conduct
+```json
+{
+  "station_code": "station-01",
+  "humidity": 61.0,
+  "temperature": 31.4,
+  "distance_cm": 8.0,
+  "wifi_ssid": "HelmetCare-IoT-Lab",
+  "wifi_rssi": -54,
+  "firmware_version": "v1.4.2-esp32"
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## Panduan Instalasi & Menjalankan Proyek
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. **Instal dependensi & siapkan environment:**
+   ```bash
+   composer install
+   cp .env.example .env
+   php artisan key:generate
+   ```
+2. **Jalankan migrasi database & seeder data awal:**
+   ```bash
+   php artisan migrate:fresh --seed
+   ```
+3. **Build aset frontend (Tailwind CSS v4 + Vite):**
+   ```bash
+   npm install
+   npm run build
+   ```
+4. **Jalankan server pengembangan:**
+   ```bash
+   php artisan serve
+   ```
+5. **Menjalankan MQTT Listener / Simulator (Opsional):**
+   ```bash
+   # Simulasi pengiriman data sensor dari ESP32:
+   php artisan mqtt:simulate --humidity=58.5 --temperature=31.2 --distance=8.0
 
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+   # Menjalankan worker subscriber MQTT (pastikan MQTT_ENABLED=true di .env):
+   php artisan mqtt:listen
+   ```
+6. **Menjalankan Pengujian BDD (Behavior-Driven Development):**
+   ```bash
+   php artisan test
+   ```

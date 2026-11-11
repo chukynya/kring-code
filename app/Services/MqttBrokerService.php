@@ -88,7 +88,7 @@ class MqttBrokerService
         }
 
         try {
-            $client = $this->createClient('-publisher-'. uniqid());
+            $client = $this->createClient('-publisher-'.uniqid());
             $settings = $this->createConnectionSettings();
 
             $client->connect($settings, true);

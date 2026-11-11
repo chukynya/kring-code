@@ -178,7 +178,7 @@
         {{-- Table Pagination Footer --}}
         <div class="mt-5 pt-3 border-t border-[#f1f1ec] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p class="text-xs text-[#6e7773]">
-                Menampilkan {{ $cycles->firstItem() ?? 0 }}&ndash;{{ $cycles->lastItem() ?? 0 }} dari {{ $cycles->total() }}
+                Menampilkan {{ $cycles->firstItem() ?? 0 }}–{{ $cycles->lastItem() ?? 0 }} dari {{ $cycles->total() }}
             </p>
 
             <div class="flex items-center gap-2">

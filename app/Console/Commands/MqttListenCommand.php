@@ -67,7 +67,7 @@ class MqttListenCommand extends Command
                 }
 
                 // Extract station_code from topic if not explicitly in payload
-                if ( empty($decoded['station_code']) && preg_match('#/([^/]+)/telemetry$#', $receivedTopic, $matches)) {
+                if (empty($decoded['station_code']) && preg_match('#/([^/]+)/telemetry$#', $receivedTopic, $matches)) {
                     $decoded['station_code'] = $matches[1];
                 }
 
